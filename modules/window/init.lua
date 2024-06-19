@@ -301,7 +301,7 @@ function W.closeWindownSafely()
   local screen = hs.screen.primaryScreen()
   -- id 并没有按照 123 排序
   local spaces = hs.spaces.spacesForScreen(screen:id())
-  if not spaces then return end
+  if not spaces or #spaces == 0 then return end
 
   -- 10s 后关闭
   local timer = hs.timer.doAfter(10, function()
