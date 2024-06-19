@@ -16,7 +16,6 @@ function U.currentSpaceWindows(screen, sortOrder)
   return windows
 end
 
----@return hs.window
 function U.currentWindow()
   local win = hs.window.focusedWindow()
   if not win then

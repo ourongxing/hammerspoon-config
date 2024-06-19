@@ -4,7 +4,6 @@ function O.isLocalHost(host)
 end
 
 function O.openURL(fullURL, host)
-  ---@diagnostic disable-next-line: undefined-field
   if host == nil then host = hs.http.urlParts(fullURL).host end
   local app = "company.thebrowser.Browser"
   if O.isLocalHost(host) then app = "com.google.Chrome" end
