@@ -14,7 +14,6 @@ local rightTop = hs.canvas.new {
 rightTop:appendElements {
   type = "rectangle",
   id = "activator",
-  strokeColor = { alpha = 0, hex = "#20B2AA" },
   fillColor = { alpha = 0, hex = "#20B2AA" },
   frame = {
     x = feedbackSize - triggerSize,
@@ -27,13 +26,17 @@ rightTop:appendElements {
 
 rightTop:behavior("canJoinAllSpaces")
 rightTop:level(hs.canvas.windowLevels.screenSaver)
-rightTop:show()
+
+--- 不知道为什么，必须有延时才行
+hs.timer.doAfter(1, function()
+  rightTop:show()
+end)
 
 local timer = nil
 rightTop:mouseCallback(
   function(_, type)
     if type == "mouseEnter" then
-      timer = hs.timer.doAfter(0.5, function()
+      timer = hs.timer.doAfter(1, function()
         require("modules.caffeinate").start()
         timer = nil
       end)
