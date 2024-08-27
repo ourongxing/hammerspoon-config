@@ -56,6 +56,8 @@ function M:alpha(alpha, ...) end
 --
 -- Notes:
 --  * You can also specify multiple elements in a table as an array, where each index in the table contains an element table, and use the array as a single argument to this method if this style works better in your code.
+
+---@return hs.canvas
 function M:appendElements(element, ...) end
 
 -- Assigns a new element to the canvas at the specified index.
@@ -183,6 +185,8 @@ M.attributes = nil
 --
 -- Returns:
 --  * if an argument is provided, then the canvasObject is returned; otherwise the current behavior value is returned.
+
+---@return hs.canvas
 function M:behavior(behavior, ...) end
 
 -- Get or set the window behavior settings for the canvas object using labels defined in [hs.canvas.windowBehaviors](#windowBehaviors).
@@ -545,6 +549,7 @@ function M:isVisible() end
 --
 -- Returns:
 --  * If an argument is provided, the canvas object; otherwise the current value.
+---@return hs.canvas
 function M:level(level, ...) end
 
 -- Returns a table specifying the size of the rectangle which can fully render the text with the specified style so that is will be completely visible.
@@ -585,6 +590,8 @@ function M:minimumTextSize(index, text, ...) end
 --  * The hit point detection occurs by comparing the mouse pointer location to the rendered content of each individual canvas object... if an object which obscures a lower object does not have mouse tracking enabled, the lower object will still receive the event if it does have tracking enabled.
 --
 --  * Clipping regions which remove content from the visible area of a rendered object are ignored for the purposes of element hit-detection.
+
+---@return hs.canvas
 function M:mouseCallback(mouseCallbackFn, ...) end
 
 -- Create a new canvas object at the specified coordinates
@@ -866,4 +873,3 @@ M.windowBehaviors = {}
 --  * A canvas object with a [hs.canvas:draggingCallback](#draggingCallback) function can only accept drag-and-drop items when its window level is at `hs.canvas.windowLevels.dragging` or lower.
 --  * A canvas object with a [hs.canvas:mouseCallback](#mouseCallback) function can only reliably receive mouse click events when its window level is at `hs.canvas.windowLevels.desktopIcon` + 1 or higher.
 M.windowLevels = nil
-
