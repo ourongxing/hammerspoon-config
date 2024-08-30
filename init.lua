@@ -8,6 +8,7 @@ require("utils")
 
 U.windowEvent({
 	created = function(win)
+		-- hs.alert("window created")
 		U.disableAXEnhancedUserInterface(win)
 	end,
 })
@@ -25,4 +26,11 @@ require("modules.urlEvent")
 -- 快捷键
 require("modules.hotkey")
 -- 屏幕角落
-require("modules.sleepCorners")
+-- require("modules.sleepCorners")
+
+hs.loadSpoon("Corners")
+spoon.Corners:start()
+
+hs.hotkey.bind({ "alt", "shift" }, "k", function()
+	spoon.Corners:start()
+end)
