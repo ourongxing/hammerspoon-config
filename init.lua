@@ -30,7 +30,3 @@ require("modules.hotkey")
 
 hs.loadSpoon("Corners")
 spoon.Corners:start()
-
-hs.hotkey.bind({ "alt", "shift" }, "k", function()
-	spoon.Corners:start()
-end)
