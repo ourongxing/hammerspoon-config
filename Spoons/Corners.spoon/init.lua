@@ -26,7 +26,7 @@ N.sleepNowCorner = "UL"
 N.neverSleepCorner = "UR"
 N.feedbackSize = 20
 N.triggerSize = 10
-N.fillColor = { alpha = 1, white = 1 }
+N.fillColor = { alpha = 0, white = 1 }
 
 ---@class hs.canvas
 N.neverSleepCanvas = canvas.new({
