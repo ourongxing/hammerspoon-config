@@ -4,6 +4,7 @@ V.LeftTopFirst = true
 V.Gap = 6
 V.MaxUndoHistory = 20
 local W = require("modules.window")
+local P = require("modules.window.pip")
 
 -- 一些基本的窗口管理，比如全屏，左右分屏，上下分屏，居中，然后四分之一屏，循环
 local h = {
@@ -22,6 +23,8 @@ local h = {
   { { 'alt' },          '`',      function() W.focusToNextScreen() end },
   { { 'alt', "shift" }, '`',      function() W.moveToNextScreen() end },
   { { 'cmd' },          '`',      function() W.focusToNextWindow() end },
+  { {},                 'f1',     function() P.focusPip() end },
+  { { 'alt', },         'p',      function() P.fixed() end },
   { { 'alt', },         'b',      function() W.focusToPrimaryScreen() end },
   { { 'alt', "shift" }, 'b',      function() W.moveToPrimaryScreen() end },
   { { "alt", "shift" }, "q",      function() W.quitAppSafely() end },

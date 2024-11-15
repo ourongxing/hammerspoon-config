@@ -6,12 +6,13 @@ U = {}
 require("hs.ipc")
 require("utils")
 
-U.windowEvent({
-	created = function(win)
-		-- hs.alert("window created")
-		U.disableAXEnhancedUserInterface(win)
-	end,
-})
+-- 效果不好，有时会会失效
+-- U.windowEvent({
+-- 	created = function(win)
+-- 		-- hs.alert("window created")
+-- 		U.disableAXEnhancedUserInterface(win)
+-- 	end,
+-- })
 
 -- hs.timer.doAfter(1, function()
 -- 	for _, win in ipairs(windows) do
@@ -25,8 +26,7 @@ require("modules.cron")
 require("modules.urlEvent")
 -- 快捷键
 require("modules.hotkey")
--- 屏幕角落
--- require("modules.sleepCorners")
 
+-- hs.loadSpoon("SpoonInstall")
 hs.loadSpoon("Corners")
 spoon.Corners:start()

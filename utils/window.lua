@@ -29,18 +29,18 @@ end
 ---@return hs.screen
 function U.nextScreen(current)
   local target = current
-  repeat
+  -- repeat
     target = target:next()
-  until target:name() and not string.find(target:name(), "Sidecar")
+  -- until target:name() and not string.find(target:name(), "Sidecar")
   return target
 end
 
 ---@return hs.screen
 function U.previousScreen(current)
   local target = current
-  repeat
+  -- repeat
     target = target:previous()
-  until target:name() and not string.find(target:name(), "Sidecar")
+  -- until target:name() and not string.find(target:name(), "Sidecar")
   return target
 end
 
@@ -50,9 +50,9 @@ function U.screens()
   local result = {}
   if not screens then return result end
   for _, screen in ipairs(screens) do
-    if not string.find(screen:name(), "Sidecar") then
+    -- if not string.find(screen:name(), "Sidecar") then
       table.insert(result, screen)
-    end
+    -- end
   end
 end
 

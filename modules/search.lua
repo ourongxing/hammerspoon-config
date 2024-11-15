@@ -8,9 +8,12 @@ function O.openURL(fullURL, host)
 		host = hs.http.urlParts(fullURL).host
 	end
 	local app = "company.thebrowser.Browser"
-	if O.isLocalHost(host) then
-		-- app = "com.google.Chrome"
-		app = "com.google.Chrome.canary"
+	-- if O.isLocalHost(host) then
+	-- 	-- app = "com.google.Chrome"
+	-- 	app = "com.google.Chrome.canary"
+	-- end
+	if string.find(host, "jav") then
+		app = "com.microsoft.edgemac"
 	end
 	hs.urlevent.openURLWithBundle(fullURL, app)
 end
