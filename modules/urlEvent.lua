@@ -17,7 +17,7 @@ hs.urlevent.bind("reload", function(eventName, params)
   -- 这是异步的
   hs.reload()
   -- 包括 karabiner 的配置
-  hs.execute("cd ~/dotfiles/_karabiner && /Users/ourongxing/.asdf/shims/bun run build")
+  hs.execute("cd /Volumes/Extra/Development/karabiner-config/ && /Users/ourongxing/.asdf/shims/npm run build")
 end)
 
 -- 始终使用 Chrome 打开本地链接
