@@ -15,9 +15,9 @@ local sleep = {
 }
 
 function M.storeBrightness()
-  local PHL, statusP = hs.execute([[/opt/homebrew/bin/betterdisplaycli get --name="PHL 279C9" --brightness]])
-  local BuildIn, statusB = hs.execute([[/opt/homebrew/bin/betterdisplaycli get --name="Built-In Display" --brightness]])
-  local iPad, statusI = hs.execute([[/opt/homebrew/bin/betterdisplaycli get --name="iPad Pro 12.9" --brightness]])
+  local PHL, statusP = hs.execute([[/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay get --name="PHL 279C9" --brightness]])
+  local BuildIn, statusB = hs.execute([[/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay get --name="Built-In Display" --brightness]])
+  local iPad, statusI = hs.execute([[/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay get --name="iPad Pro 12.9" --brightness]])
   if statusP then
     origin.PHL = tonumber(PHL)
   end
@@ -30,11 +30,11 @@ function M.storeBrightness()
 end
 
 function M.setBrightness(brightness)
-  hs.execute('/opt/homebrew/bin/betterdisplaycli set --name="PHL 279C9" --brightness=' ..
+  hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="PHL 279C9" --brightness=' ..
     brightness.PHL)
-  hs.execute('/opt/homebrew/bin/betterdisplaycli set --name="Built-In Display" --brightness=' ..
+  hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="Built-In Display" --brightness=' ..
     brightness.BuildIn)
-  hs.execute('/opt/homebrew/bin/betterdisplaycli set --name="iPad Pro 12.9" --brightness=' ..
+  hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="iPad Pro 12.9" --brightness=' ..
     brightness.iPad)
 end
 
