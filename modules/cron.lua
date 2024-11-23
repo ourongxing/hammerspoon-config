@@ -16,6 +16,6 @@ T = {
   -- 一般两个月没有更新就会自动停用 Github Action
   -- 顺便双向同步一下 github 和 notion
   hs.timer.doAt("22:00", "7d", function()
-    hs.execute("bash /Users/ourongxing/Development/github-notion-star/bi-sync.sh")
+    hs.execute("bash /Volumes/Extra/Development/github-notion-star/bi-sync.sh")
   end),
 }

@@ -16,7 +16,9 @@ obj.version = "0.1"
 
 N.sleepDelay = 1
 N.neverSleepDelay = 1
-N.sleepScreen = screen.primaryScreen()
+N.sleepScreen = function()
+	return screen.primaryScreen()
+end
 ---   `*`  - Do not provide a sleep now corner (disable this feature)
 ---   `UL` - Upper left corner
 ---   `UR` - Upper right corner
@@ -100,8 +102,7 @@ N.sleepNowCanvas:mouseCallback(sleepNowFn):behavior("canJoinAllSpaces"):level(de
 })
 
 local function setCanvasPosition(c, p)
-	N.sleepScreen = screen.primaryScreen()
-	local frame = N.sleepScreen:fullFrame()
+	local frame = N.sleepScreen():fullFrame()
 	if p == "UL" then
 		c:frame({
 			x = frame.x,
@@ -115,7 +116,6 @@ local function setCanvasPosition(c, p)
 			h = N.triggerSize,
 			w = N.triggerSize,
 		}
-		U.print(c)
 	elseif p == "UR" then
 		c:frame({
 			x = frame.x + frame.w - N.feedbackSize,
@@ -181,8 +181,8 @@ function obj:start()
 		.newWithActiveScreen(function(v)
 			if v == nil then
         local now = os.time()
-        if now - lastActive > 5 then
-          init()
+        if now - lastActive > 5 and N.sleepScreen() then
+					hs.timer.doAfter(60, init)
         end
         lastActive = now
 			end

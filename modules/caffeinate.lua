@@ -32,8 +32,6 @@ end
 function M.setBrightness(brightness)
   hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="PHL 279C9" --brightness=' ..
     brightness.PHL)
-  hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="Built-In Display" --brightness=' ..
-    brightness.BuildIn)
   hs.execute('/Applications/BetterDisplay.app/Contents/MacOS/BetterDisplay set --name="iPad Pro 12.9" --brightness=' ..
     brightness.iPad)
 end
