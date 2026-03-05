@@ -12,8 +12,8 @@ function O.openURL(fullURL, host)
 	-- 	-- app = "com.google.Chrome"
 	-- 	app = "com.google.Chrome.canary"
 	-- end
-	if string.find(host, "jav") then
-		app = "com.microsoft.edgemac"
+	if string.find(host, "bili") or string.find(host, "youtube") or string.find(host, "douyin") then
+		app = "com.kagi.kagimacOS"
 	end
 	hs.urlevent.openURLWithBundle(fullURL, app)
 end

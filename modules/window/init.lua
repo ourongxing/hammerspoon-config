@@ -34,51 +34,51 @@ function W.transfrom(win, type, superposition)
 	end
 
 	-- 原点是左上角
-	-- 顶上不要 gap
+	-- 只保留两个窗口之间的 gap，窗口与屏幕边缘不留 gap
 
-	local fullW = screen.w - gap * 2
-	local fullH = screen.h - gap
+	local fullW = screen.w
+	local fullH = screen.h
 
-	-- gap + halfW + gap + halfW + gap = screen.w
+	-- halfW + gap + halfW = screen.w
 	-- // 表示向下取整，避免后续判断相同 frame 不准确
-	local halfW = (screen.w - gap) // 2 - gap
-	local halfX = screen.x + gap + halfW + gap
+	local halfW = (screen.w - gap) // 2
+	local halfX = screen.x + halfW + gap
 
 	-- y 是有值的，x 没值（如果多屏幕，x 可能为负数），应该是计算了状态栏，而 screen.h 不包括状态栏，当然也不包括 dock 栏
-	-- halfH + gap + halfH + gap = screen.h
-	local halfH = screen.h // 2 - gap
+	-- halfH + gap + halfH = screen.h
+	local halfH = (screen.h - gap) // 2
 	local halfY = screen.y + halfH + gap
 
-	-- gap + oneThirdW  + gap + twoThirdW + gap = screen.w
-	local oneThirdW = screen.w // 3 - gap
-	local oneThirdX = screen.x + gap + oneThirdW + gap
+	-- oneThirdW + gap + twoThirdW = screen.w
+	local oneThirdW = screen.w // 3
+	local oneThirdX = screen.x + oneThirdW + gap
 
-	local twoThirdW = screen.w - 3 * gap - oneThirdW
-	local twoThirdX = screen.x + gap + twoThirdW + gap
+	local twoThirdW = screen.w - gap - oneThirdW
+	local twoThirdX = screen.x + twoThirdW + gap
 
-	-- oneThirdH + gap + twoThirdH + gap = screen.h
-	local oneThirdH = (screen.h - 2 * gap) // 3
+	-- oneThirdH + gap + twoThirdH = screen.h
+	local oneThirdH = (screen.h - gap) // 3
 	local oneThirdY = screen.y + oneThirdH + gap
 
-	local twoThirdH = screen.h - 2 * gap - oneThirdH
+	local twoThirdH = screen.h - gap - oneThirdH
 	local twoThirdY = screen.y + twoThirdH + gap
 
 	local presets = {
-		full = { x = screen.x + gap, y = screen.y, w = fullW, h = fullH },
-		left = { x = screen.x + gap, y = screen.y, w = halfW, h = fullH },
-		["left-1/3"] = { x = screen.x + gap, y = screen.y, w = oneThirdW, h = fullH },
-		["left-2/3"] = { x = screen.x + gap, y = screen.y, w = twoThirdW, h = fullH },
+		full = { x = screen.x, y = screen.y, w = fullW, h = fullH },
+		left = { x = screen.x, y = screen.y, w = halfW, h = fullH },
+		["left-1/3"] = { x = screen.x, y = screen.y, w = oneThirdW, h = fullH },
+		["left-2/3"] = { x = screen.x, y = screen.y, w = twoThirdW, h = fullH },
 		right = { x = halfX, y = screen.y, w = halfW, h = fullH },
 		["right-1/3"] = { x = twoThirdX, y = screen.y, w = oneThirdW, h = fullH },
 		["right-2/3"] = { x = oneThirdX, y = screen.y, w = twoThirdW, h = fullH },
-		top = { x = screen.x + gap, y = screen.y, w = fullW, h = halfH },
-		["top-1/3"] = { x = screen.x + gap, y = screen.y, w = fullW, h = oneThirdH },
-		["top-2/3"] = { x = screen.x + gap, y = screen.y, w = fullW, h = twoThirdH },
-		bottom = { x = screen.x + gap, y = halfY, w = fullW, h = halfH },
-		["bottom-1/3"] = { x = screen.x + gap, y = twoThirdY, w = fullW, h = oneThirdH },
-		["bottom-2/3"] = { x = screen.x + gap, y = oneThirdY, w = fullW, h = twoThirdH },
-		["left-top"] = { x = screen.x + gap, y = screen.y, w = halfW, h = halfH },
-		["left-bottom"] = { x = screen.x + gap, y = halfY, w = halfW, h = halfH },
+		top = { x = screen.x, y = screen.y, w = fullW, h = halfH },
+		["top-1/3"] = { x = screen.x, y = screen.y, w = fullW, h = oneThirdH },
+		["top-2/3"] = { x = screen.x, y = screen.y, w = fullW, h = twoThirdH },
+		bottom = { x = screen.x, y = halfY, w = fullW, h = halfH },
+		["bottom-1/3"] = { x = screen.x, y = twoThirdY, w = fullW, h = oneThirdH },
+		["bottom-2/3"] = { x = screen.x, y = oneThirdY, w = fullW, h = twoThirdH },
+		["left-top"] = { x = screen.x, y = screen.y, w = halfW, h = halfH },
+		["left-bottom"] = { x = screen.x, y = halfY, w = halfW, h = halfH },
 		["right-top"] = { x = halfX, y = screen.y, w = halfW, h = halfH },
 		["right-bottom"] = { x = halfX, y = halfY, w = halfW, h = halfH },
 		reasonable = {
@@ -89,7 +89,7 @@ function W.transfrom(win, type, superposition)
 		},
 		center = {
 			x = screen.x + (screen.w - origin.w) / 2,
-			y = screen.y + (screen.h - origin.h) / 2 - gap,
+			y = screen.y + (screen.h - origin.h) / 2,
 			w = origin.w,
 			h = origin.h,
 		},
