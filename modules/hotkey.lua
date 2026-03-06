@@ -1,7 +1,8 @@
 -- autolayout window，焦点 app 始终在左边和上边，占据优势地位。
 V.LeftTopFirst = true
--- window gap，但是顶上是没有的，因为有状态栏本身就有一定的留白。
-V.Gap = 6
+V.Gap = 0
+-- 关闭「显示器具有单独空间」时启用：两块屏视为一块虚拟桌面，主屏=横屏，按横屏/竖屏划分
+V.UnifiedDisplayMaximize = true
 V.MaxUndoHistory = 20
 local W = require("modules.window")
 local P = require("modules.window.pip")
@@ -14,6 +15,8 @@ local h = {
   { { "alt" },          "h",      function() W.baseTransform("left") end },
   { { "alt" },          "j",      function() W.baseTransform("bottom") end },
   { { "alt" },          "k",      function() W.baseTransform("top") end },
+  { { "alt", "shift" }, "k",      function() W.baseTransform("vertical-above") end },
+  { { "alt", "shift" }, "j",      function() W.baseTransform("vertical-below") end },
   { { "alt" },          "c",      function() W.baseTransform("center") end },
   { { "alt", "shift" }, "c",      function() W.baseTransform("reasonable") end },
   { { "alt" },          "m",      function() W.autoLayout() end },

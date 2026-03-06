@@ -7,11 +7,114 @@ local W = {
 -- autolayout 外置是为了在 base transform 后重现开始
 local nextLayout = nil
 
+-- 主屏 = 横屏（w > h），用于 unified 区域的 y、h 参考
+local function getHorizontalScreenFrame()
+	local screens = hs.screen.allScreens()
+	if not screens or #screens == 0 then
+		return hs.screen.mainScreen():frame()
+	end
+	for _, s in ipairs(screens) do
+		local f = s:frame()
+		if f.w > f.h then
+			return f
+		end
+	end
+	return hs.screen.mainScreen():frame()
+end
+
+-- 主屏 = 横屏的 screen 对象
+local function getHorizontalScreen()
+	local screens = hs.screen.allScreens()
+	if not screens or #screens == 0 then
+		return hs.screen.mainScreen()
+	end
+	for _, s in ipairs(screens) do
+		local f = s:frame()
+		if f.w > f.h then
+			return s
+		end
+	end
+	return hs.screen.mainScreen()
+end
+
+-- 获取统一显示区域 frame（关闭「显示器具有单独空间」时，两块屏视为一块虚拟桌面）
+-- 主屏始终是横屏；x、w：水平总跨度；y、h：取横屏的 y、h
+-- 两块 16:9 屏（一竖一横）并排 → 最大可用区域 25:9
+-- 返回 frame 以及 split 信息（左块/右块 frame，竖屏可充分利用上下空间）
+local function getUnifiedFrame()
+	local screens = hs.screen.allScreens()
+	if not screens or #screens < 2 then
+		return hs.screen.mainScreen():frame(), nil
+	end
+	local horizontalFrame = getHorizontalScreenFrame()
+	local minX, maxRight = math.huge, -math.huge
+	local leftFrame, rightFrame
+	for _, s in ipairs(screens) do
+		local f = s:frame()
+		if f.x < minX then
+			minX = f.x
+			leftFrame = f
+		end
+		maxRight = math.max(maxRight, f.x + f.w)
+	end
+	local splitX = minX + leftFrame.w
+	for _, s in ipairs(screens) do
+		local f = s:frame()
+		if f.x >= splitX then
+			rightFrame = f
+			break
+		end
+	end
+	rightFrame = rightFrame or horizontalFrame
+	local verticalAbove, verticalBelow
+	local gap = V.Gap or 6
+	for _, f in ipairs({ leftFrame, rightFrame }) do
+		if f and f.h > f.w then
+			-- 竖屏超出横屏的部分：上、下两块，与横屏之间留 gap
+			local hTop = horizontalFrame.y - f.y
+			local hBottom = (f.y + f.h) - (horizontalFrame.y + horizontalFrame.h)
+			if hTop > gap then
+				verticalAbove = { x = f.x, y = f.y, w = f.w, h = hTop - gap // 2 }
+			end
+			if hBottom > gap then
+				verticalBelow = {
+					x = f.x,
+					y = horizontalFrame.y + horizontalFrame.h + gap // 2,
+					w = f.w,
+					h = hBottom - (gap - gap // 2),
+				}
+			end
+			break
+		end
+	end
+	return {
+		x = minX,
+		y = horizontalFrame.y,
+		w = maxRight - minX,
+		h = horizontalFrame.h,
+	}, {
+		leftW = leftFrame.w,
+		rightW = maxRight - splitX,
+		splitX = splitX,
+		leftScreen = leftFrame,
+		rightScreen = rightFrame,
+		verticalAbove = verticalAbove,
+		verticalBelow = verticalBelow,
+	}
+end
+
 -- 一些预设的窗口变化
 -- superposition 就是叠加之前的状态，比如之前是上半屏，再按右半屏就是右上四分之一，就是叠加。
 function W.transfrom(win, type, superposition)
 	local gap = V.Gap or 6
-	local screen = hs.screen.mainScreen():frame()
+	local useUnified = V.UnifiedDisplayMaximize and #(hs.screen.allScreens() or {}) >= 2
+	local screen, split
+	if useUnified then
+		screen, split = getUnifiedFrame()
+	else
+		screen = hs.screen.mainScreen():frame()
+		split = nil
+	end
 	local app = win:application()
 	-- 强制每次执行一次，关掉变换动画
 	local axApp = hs.axuielement.applicationElement(app)
@@ -39,48 +142,55 @@ function W.transfrom(win, type, superposition)
 	local fullW = screen.w
 	local fullH = screen.h
 
-	-- halfW + gap + halfW = screen.w
-	-- // 表示向下取整，避免后续判断相同 frame 不准确
-	local halfW = (screen.w - gap) // 2
-	local halfX = screen.x + halfW + gap
+	-- 有 split 时按两块屏幕比例划分，否则 50-50
+	local halfWLeft, halfWRight, halfX
+	local leftVerticalHalfH, leftVerticalHalfY, leftVerticalBottomH
+	local rightVerticalHalfH, rightVerticalHalfY, rightVerticalBottomH
+	if split then
+		halfWLeft = split.leftW - gap // 2
+		halfWRight = split.rightW - (gap - gap // 2)
+		halfX = split.splitX + gap // 2
+		-- 竖屏（h > w）可上下分半
+		if split.leftScreen and split.leftScreen.h > split.leftScreen.w then
+			leftVerticalHalfH = (split.leftScreen.h - gap) // 2
+			leftVerticalHalfY = split.leftScreen.y + leftVerticalHalfH + gap
+			leftVerticalBottomH = split.leftScreen.h - leftVerticalHalfH - gap
+		end
+		if split.rightScreen and split.rightScreen.h > split.rightScreen.w then
+			rightVerticalHalfH = (split.rightScreen.h - gap) // 2
+			rightVerticalHalfY = split.rightScreen.y + rightVerticalHalfH + gap
+			rightVerticalBottomH = split.rightScreen.h - rightVerticalHalfH - gap
+		end
+	else
+		halfWLeft = (screen.w - gap) // 2
+		halfWRight = halfWLeft
+		halfX = screen.x + halfWLeft + gap
+	end
 
 	-- y 是有值的，x 没值（如果多屏幕，x 可能为负数），应该是计算了状态栏，而 screen.h 不包括状态栏，当然也不包括 dock 栏
 	-- halfH + gap + halfH = screen.h
 	local halfH = (screen.h - gap) // 2
 	local halfY = screen.y + halfH + gap
 
-	-- oneThirdW + gap + twoThirdW = screen.w
-	local oneThirdW = screen.w // 3
-	local oneThirdX = screen.x + oneThirdW + gap
-
-	local twoThirdW = screen.w - gap - oneThirdW
-	local twoThirdX = screen.x + twoThirdW + gap
-
-	-- oneThirdH + gap + twoThirdH = screen.h
-	local oneThirdH = (screen.h - gap) // 3
-	local oneThirdY = screen.y + oneThirdH + gap
-
-	local twoThirdH = screen.h - gap - oneThirdH
-	local twoThirdY = screen.y + twoThirdH + gap
-
+	-- 竖屏用完整高度，横屏用 unified 区域高度
+	local function verticalH(frame) return frame and frame.h > frame.w and frame.h or fullH end
+	local function verticalY(frame) return frame and frame.h > frame.w and frame.y or screen.y end
+	local leftH = split and verticalH(split.leftScreen) or fullH
+	local leftY = split and verticalY(split.leftScreen) or screen.y
+	local rightH = split and verticalH(split.rightScreen) or fullH
+	local rightY = split and verticalY(split.rightScreen) or screen.y
 	local presets = {
 		full = { x = screen.x, y = screen.y, w = fullW, h = fullH },
-		left = { x = screen.x, y = screen.y, w = halfW, h = fullH },
-		["left-1/3"] = { x = screen.x, y = screen.y, w = oneThirdW, h = fullH },
-		["left-2/3"] = { x = screen.x, y = screen.y, w = twoThirdW, h = fullH },
-		right = { x = halfX, y = screen.y, w = halfW, h = fullH },
-		["right-1/3"] = { x = twoThirdX, y = screen.y, w = oneThirdW, h = fullH },
-		["right-2/3"] = { x = oneThirdX, y = screen.y, w = twoThirdW, h = fullH },
+		left = { x = screen.x, y = leftY, w = halfWLeft, h = leftH },
+		right = { x = halfX, y = rightY, w = halfWRight, h = rightH },
 		top = { x = screen.x, y = screen.y, w = fullW, h = halfH },
-		["top-1/3"] = { x = screen.x, y = screen.y, w = fullW, h = oneThirdH },
-		["top-2/3"] = { x = screen.x, y = screen.y, w = fullW, h = twoThirdH },
 		bottom = { x = screen.x, y = halfY, w = fullW, h = halfH },
-		["bottom-1/3"] = { x = screen.x, y = twoThirdY, w = fullW, h = oneThirdH },
-		["bottom-2/3"] = { x = screen.x, y = oneThirdY, w = fullW, h = twoThirdH },
-		["left-top"] = { x = screen.x, y = screen.y, w = halfW, h = halfH },
-		["left-bottom"] = { x = screen.x, y = halfY, w = halfW, h = halfH },
-		["right-top"] = { x = halfX, y = screen.y, w = halfW, h = halfH },
-		["right-bottom"] = { x = halfX, y = halfY, w = halfW, h = halfH },
+		["vertical-above"] = split and split.verticalAbove or { x = screen.x, y = screen.y, w = fullW, h = halfH },
+		["vertical-below"] = split and split.verticalBelow or { x = screen.x, y = halfY, w = fullW, h = halfH },
+		["left-top"] = { x = screen.x, y = leftY, w = halfWLeft, h = leftVerticalHalfH or halfH },
+		["left-bottom"] = { x = screen.x, y = leftVerticalHalfY or halfY, w = halfWLeft, h = leftVerticalBottomH or halfH },
+		["right-top"] = { x = halfX, y = rightY, w = halfWRight, h = rightVerticalHalfH or halfH },
+		["right-bottom"] = { x = halfX, y = rightVerticalHalfY or halfY, w = halfWRight, h = rightVerticalBottomH or halfH },
 		reasonable = {
 			x = screen.x + screen.w * 0.2,
 			y = screen.y + screen.h * 0.1,
@@ -174,19 +284,18 @@ function W.autoLayout(shift)
 	end
 	local layout = leftTopFirst
 			and {
-				{ "left-2/3", "right-1/3" },
 				{ "left", "right" },
-				{ "top-2/3", "bottom-1/3" },
 				{ "top", "bottom" },
 			}
 		or {
-			{ "right-2/3", "left-1/3" },
 			{ "right", "left" },
-			{ "bottom-2/3", "top-1/3" },
 			{ "bottom", "top" },
 		}
 
-	local windows = U.currentSpaceWindows()
+	local screens = hs.screen.allScreens()
+	local windows = (V.UnifiedDisplayMaximize and screens and #screens >= 2)
+		and U.currentSpaceWindows(screens)
+		or U.currentSpaceWindows()
 	if #windows ~= 0 then
 		-- 如果窗口不一样，就重新开始循环，包括焦点变了
 		if not nextLayout or nextLayout[1] ~= windows[1] then
@@ -246,9 +355,9 @@ function W.moveToNextScreen()
 	end)
 end
 
--- 将任意屏幕的鼠标移动到主屏幕，同时切换焦点
+-- 焦点切到主屏（横屏），鼠标跟随
 function W.focusToPrimaryScreen()
-	local targetScreen = hs.screen.primaryScreen()
+	local targetScreen = getHorizontalScreen()
 	local currentScreen = hs.mouse.getCurrentScreen()
 	if not (targetScreen and currentScreen) then
 		return
@@ -265,7 +374,7 @@ function W.focusToPrimaryScreen()
 	end)
 end
 
--- 将任意屏幕的窗口移动到主屏幕
+-- 将窗口移动到主屏（横屏）
 function W.moveToPrimaryScreen()
 	local win = U.currentWindow()
 	if not win then
@@ -273,7 +382,7 @@ function W.moveToPrimaryScreen()
 	end
 	local current = win:screen()
 	local currentFrame = win:frame()
-	local target = hs.screen.primaryScreen()
+	local target = getHorizontalScreen()
 	local currentMouse = hs.mouse.absolutePosition()
 	M.undoManager(function()
 		hs.mouse.absolutePosition(U.transformPoint(currentMouse, current:frame(), target:frame()))
@@ -324,8 +433,8 @@ end
 function W.closeWindownSafely()
 	-- minimize 不太好用，有动画，还是这个好。
 	local win = U.currentWindow()
-	-- 都放到主显示器最后一个 space
-	local screen = hs.screen.primaryScreen()
+	-- 都放到主屏（横屏）的最后一个 space
+	local screen = getHorizontalScreen()
 	-- id 并没有按照 123 排序
 	local spaces = hs.spaces.spacesForScreen(screen:id())
 	if not spaces or #spaces == 0 then

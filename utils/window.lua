@@ -1,4 +1,5 @@
 -- 当前屏幕可见的 Space 的所有窗口
+-- screen: 单个 screen 或 screen 数组（unified 模式下传 allScreens 以包含所有屏）
 function U.currentSpaceWindows(screen, sortOrder)
   if not sortOrder then sortOrder = hs.window.filter.sortByFocusedLast end
   if not screen then screen = hs.screen.mainScreen() end
@@ -7,10 +8,17 @@ function U.currentSpaceWindows(screen, sortOrder)
   -- 我发现一旦全屏之后，就算不再全屏，也会被筛选出去
   -- 这些属性，比如  currentSpace，如果为 nil，那就是所有 space 的窗口，但如果是 false，就只有非当前 space 的窗口。
   ---@return hs.window[]
+  local allowScreens = type(screen) == "table" and (function()
+    local ids = {}
+    for _, s in ipairs(screen) do
+      ids[#ids + 1] = s:id()
+    end
+    return ids
+  end)() or screen:id()
   local windows = hs.window.filter.new(true):setOverrideFilter({
     visible = true,
     allowRoles = { "AXStandardWindow" },
-    allowScreens = screen:id(),
+    allowScreens = allowScreens,
     currentSpace = true
   }):getWindows(sortOrder)
   return windows
