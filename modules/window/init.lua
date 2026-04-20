@@ -192,10 +192,10 @@ function W.transfrom(win, type, superposition)
 		["right-top"] = { x = halfX, y = rightY, w = halfWRight, h = rightVerticalHalfH or halfH },
 		["right-bottom"] = { x = halfX, y = rightVerticalHalfY or halfY, w = halfWRight, h = rightVerticalBottomH or halfH },
 		reasonable = {
-			x = screen.x + screen.w * 0.2,
-			y = screen.y + screen.h * 0.1,
-			w = screen.w * 0.6,
-			h = screen.h * 0.8,
+			x = win:screen():frame().x + win:screen():frame().w * 0.2,
+			y = win:screen():frame().y + win:screen():frame().h * 0.1,
+			w = win:screen():frame().w * 0.6,
+			h = win:screen():frame().h * 0.8,
 		},
 		center = {
 			x = screen.x + (screen.w - origin.w) / 2,

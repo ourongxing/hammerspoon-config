@@ -166,10 +166,10 @@ local function setCanvasPosition(c, p)
 end
 
 local function init()
-	setCanvasPosition(N.sleepNowCanvas, N.sleepNowCorner)
+	-- setCanvasPosition(N.sleepNowCanvas, N.sleepNowCorner)
 	setCanvasPosition(N.neverSleepCanvas, N.neverSleepCorner)
 
-	N.sleepNowCanvas:show()
+	-- N.sleepNowCanvas:show()
 	N.neverSleepCanvas:show()
 end
 
