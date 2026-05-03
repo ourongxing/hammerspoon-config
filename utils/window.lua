@@ -111,3 +111,89 @@ function U.windowEvent(fn)
   if fn.focused then filter:subscribe(hs.window.filter.windowFocused, fn.focused) end
   if fn.unfocused then filter:subscribe(hs.window.filter.windowUnfocused, fn.unfocused) end
 end
+
+local displaySleepLayoutSnapshot = nil
+local displayWakeRestoreTimer = nil
+
+local function snapshotWindowsForDisplaySleep()
+  local filter = hs.window.filter.new(true):setOverrideFilter({
+    visible = true,
+    allowRoles = { "AXStandardWindow" },
+  })
+  local wins = filter:getWindows()
+  local list = {}
+  for _, win in ipairs(wins) do
+    local app = win:application()
+    local pid = app and app:pid()
+    local f = win:frame()
+    if pid and f and f.x and f.w then
+      list[#list + 1] = {
+        id = win:id(),
+        pid = pid,
+        title = win:title() or "",
+        frame = { x = f.x, y = f.y, w = f.w, h = f.h },
+      }
+    end
+  end
+  displaySleepLayoutSnapshot = list
+end
+
+local function findWindowForLayoutEntry(entry)
+  if entry.id then
+    local w = hs.window.get(entry.id)
+    if w and w:application() and w:application():pid() == entry.pid then
+      return w
+    end
+  end
+  local app = hs.application.get(entry.pid)
+  if not app then return nil end
+  for _, w in ipairs(app:allWindows()) do
+    if w:isStandard() and (w:title() or "") == entry.title then
+      return w
+    end
+  end
+  return nil
+end
+
+local function restoreWindowsAfterDisplayWake()
+  local snap = displaySleepLayoutSnapshot
+  if not snap or #snap == 0 then return end
+  for _, entry in ipairs(snap) do
+    local win = findWindowForLayoutEntry(entry)
+    if win and win:isVisible() and not win:isMinimized() then
+      local f = entry.frame
+      U.fixAnimation(win, function()
+        win:setFrame({ x = f.x, y = f.y, w = f.w, h = f.h }, 0)
+      end)
+    end
+  end
+end
+
+local function scheduleRestoreAfterDisplayWake()
+  if displayWakeRestoreTimer then
+    displayWakeRestoreTimer:stop()
+  end
+  displayWakeRestoreTimer = hs.timer.doAfter(0.55, function()
+    displayWakeRestoreTimer = nil
+    restoreWindowsAfterDisplayWake()
+  end)
+end
+
+function U.startDisplaySleepWindowLayoutWatch()
+  if U._displaySleepWindowLayoutWatcher then
+    return
+  end
+  local w = hs.caffeinate.watcher.new(function(event)
+    if event == hs.caffeinate.watcher.screensDidSleep
+        or event == hs.caffeinate.watcher.systemWillSleep then
+      snapshotWindowsForDisplaySleep()
+    elseif event == hs.caffeinate.watcher.screensDidWake
+        or event == hs.caffeinate.watcher.systemDidWake then
+      scheduleRestoreAfterDisplayWake()
+    end
+  end)
+  w:start()
+  U._displaySleepWindowLayoutWatcher = w
+end
+
+U.startDisplaySleepWindowLayoutWatch()
