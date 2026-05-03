@@ -28,5 +28,5 @@ require("modules.urlEvent")
 require("modules.hotkey")
 
 -- hs.loadSpoon("SpoonInstall")
-hs.loadSpoon("Corners")
-spoon.Corners:start()
+-- hs.loadSpoon("Corners")
+-- spoon.Corners:start()
