@@ -1,6 +1,6 @@
 -- autolayout window，焦点 app 始终在左边和上边，占据优势地位。
 V.LeftTopFirst = true
-V.Gap = 0
+V.Gap = 6
 -- 关闭「显示器具有单独空间」时启用：两块屏视为一块虚拟桌面，主屏=横屏，按横屏/竖屏划分
 V.UnifiedDisplayMaximize = true
 V.MaxUndoHistory = 20
