@@ -128,7 +128,15 @@ modules/window/undoManager.lua (撤销/重做)
 
 ---
 
-## 六、自动布局 (autoLayout)
+## 六、跨屏鼠标位置
+
+- 切换显示器焦点时，会按显示器 ID 记录每块屏幕上一次的鼠标位置
+- 再次切回该显示器时，优先恢复上次位置；没有记录时回退到目标窗口中心或屏幕中心
+- 记录保存在 `hs.settings` 中，Hammerspoon reload 后仍可恢复
+
+---
+
+## 七、自动布局 (autoLayout)
 
 - 目标：当前 Space 的前两个窗口
 - 布局循环（`V.LeftTopFirst = true`）：`left + right` → `top + bottom`
@@ -136,7 +144,7 @@ modules/window/undoManager.lua (撤销/重做)
 
 ---
 
-## 七、撤销系统 (undoManager)
+## 八、撤销系统 (undoManager)
 
 - 记录：frame、screen、space、全屏状态、鼠标位置、focusWin
 - 上限：`V.MaxUndoHistory = 20`
@@ -144,7 +152,7 @@ modules/window/undoManager.lua (撤销/重做)
 
 ---
 
-## 八、特殊处理
+## 九、特殊处理
 
 1. **Raycast 空标题窗口**：用方向键而非 setFrame 控制
 2. **AXEnhancedUserInterface**：变换前关闭，避免动画异常

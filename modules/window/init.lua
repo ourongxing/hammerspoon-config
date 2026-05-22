@@ -6,6 +6,11 @@ local W = {
 
 -- autolayout 外置是为了在 base transform 后重现开始
 local nextLayout = nil
+local mousePositionsByScreenKey = "modules.window.mousePositionsByScreen"
+local mousePositionsByScreen = hs.settings.get(mousePositionsByScreenKey) or {}
+if type(mousePositionsByScreen) ~= "table" then
+	mousePositionsByScreen = {}
+end
 
 -- 主屏 = 横屏（w > h），用于 unified 区域的 y、h 参考
 local function getHorizontalScreenFrame()
@@ -57,6 +62,51 @@ local function shouldUseUnifiedDisplay()
 		return false
 	end
 	return true
+end
+
+local function screenKey(screen)
+	if not screen then
+		return nil
+	end
+	return tostring(screen:id())
+end
+
+local function pointInFrame(point, frame)
+	return point
+			and frame
+			and point.x >= frame.x
+			and point.x <= frame.x + frame.w
+			and point.y >= frame.y
+			and point.y <= frame.y + frame.h
+end
+
+local function saveMousePositionForScreen(screen)
+	local key = screenKey(screen)
+	if not key then
+		return
+	end
+	local point = hs.mouse.absolutePosition()
+	local frame = screen:frame()
+	if not pointInFrame(point, frame) then
+		return
+	end
+	mousePositionsByScreen[key] = { x = point.x, y = point.y }
+	hs.settings.set(mousePositionsByScreenKey, mousePositionsByScreen)
+end
+
+local function mousePositionForScreen(screen, fallback)
+	local key = screenKey(screen)
+	local point = key and mousePositionsByScreen[key] or nil
+	if point and pointInFrame(point, screen:frame()) then
+		return point
+	end
+	return fallback
+end
+
+local function moveMouseToScreen(screen, fallback)
+	local point = mousePositionForScreen(screen, fallback or screen:frame().center)
+	hs.mouse.absolutePosition(point)
+	saveMousePositionForScreen(screen)
 end
 
 -- 获取统一显示区域 frame（关闭「显示器具有单独空间」时，两块屏视为一块虚拟桌面）
@@ -340,6 +390,9 @@ end
 -- 切换显示器焦点以及鼠标，焦点需要有窗口
 function W.focusToNextScreen()
 	local currentWindow = U.currentWindow()
+	if not currentWindow then
+		return
+	end
 	local current = currentWindow:screen()
 	local target = U.nextScreen(current)
 	local targetWindows = U.currentSpaceWindows(target)
@@ -353,16 +406,11 @@ function W.focusToNextScreen()
 		targetWindows = U.currentSpaceWindows(target)
 	end
 
-	-- local currentMouse = hs.mouse.absolutePosition()
+	saveMousePositionForScreen(hs.mouse.getCurrentScreen())
 	M.undoManager(function()
 		-- 貌似这个 focus 不同屏幕上相同 app 的窗口，会优先 focus 当前屏幕的
-		-- local win = U.currentWindow()
 		targetWindows[1]:focus()
-		-- if win then
-		-- 	hs.mouse.absolutePosition(U.transformPoint(currentMouse, win:frame(), target:frame()))
-		-- else
-		hs.mouse.absolutePosition(targetWindows[1]:frame().center)
-		-- end
+		moveMouseToScreen(target, targetWindows[1]:frame().center)
 	end)
 end
 
@@ -376,9 +424,11 @@ function W.moveToNextScreen()
 	local currentframe = win:frame()
 	local target = U.nextScreen(current)
 	local currentMouse = hs.mouse.absolutePosition()
+	saveMousePositionForScreen(hs.mouse.getCurrentScreen())
 	M.undoManager(function()
 		win:move(currentframe:toUnitRect(current:frame()), target, true, 0)
 		hs.mouse.absolutePosition(U.transformPoint(currentMouse, current:frame(), target:frame()))
+		saveMousePositionForScreen(target)
 	end)
 end
 
@@ -391,12 +441,13 @@ function W.focusToPrimaryScreen()
 	end
 
 	local win = U.currentSpaceWindows(targetScreen)[1]
+	saveMousePositionForScreen(currentScreen)
 	M.undoManager(function()
 		if win then
 			win:focus()
-			hs.mouse.absolutePosition(win:frame().center)
+			moveMouseToScreen(targetScreen, win:frame().center)
 		else
-			hs.mouse.absolutePosition(targetScreen:frame().center)
+			moveMouseToScreen(targetScreen, targetScreen:frame().center)
 		end
 	end)
 end
@@ -411,8 +462,10 @@ function W.moveToPrimaryScreen()
 	local currentFrame = win:frame()
 	local target = getHorizontalScreen()
 	local currentMouse = hs.mouse.absolutePosition()
+	saveMousePositionForScreen(hs.mouse.getCurrentScreen())
 	M.undoManager(function()
 		hs.mouse.absolutePosition(U.transformPoint(currentMouse, current:frame(), target:frame()))
+		saveMousePositionForScreen(target)
 		win:move(currentFrame:toUnitRect(current:frame()), target, true, 0)
 		win:focus()
 	end)
