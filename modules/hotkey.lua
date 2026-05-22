@@ -1,8 +1,8 @@
 -- autolayout window，焦点 app 始终在左边和上边，占据优势地位。
 V.LeftTopFirst = true
 V.Gap = 0
--- 关闭「显示器具有单独空间」时启用：两块屏视为一块虚拟桌面，主屏=横屏，按横屏/竖屏划分
-V.UnifiedDisplayMaximize = true
+-- true: 强制统一显示模式；false: 当前显示器模式；"auto": 跟随「显示器具有单独空间」
+V.UnifiedDisplayMaximize = "auto"
 V.MaxUndoHistory = 20
 local W = require("modules.window")
 local P = require("modules.window.pip")

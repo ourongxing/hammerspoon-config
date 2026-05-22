@@ -19,15 +19,15 @@ modules/window/undoManager.lua (撤销/重做)
 
 ## 二、屏幕模式
 
-### 2.1 单屏模式
+### 2.1 当前显示器模式
 
-- 条件：`V.UnifiedDisplayMaximize = false` 或 **只有 1 块显示器**
-- 使用：`hs.screen.mainScreen():frame()` 作为当前屏幕
-- 所有 preset 基于该屏幕的 50-50 / 1/3-2/3 划分
+- 条件：`V.UnifiedDisplayMaximize = false`、**只有 1 块显示器**，或 `V.UnifiedDisplayMaximize = "auto"` 且 macOS 开启了 **Displays have separate Spaces**
+- 使用：当前窗口所在的 `win:screen():frame()` 作为当前屏幕
+- 所有 preset 基于当前窗口所在屏幕的 50-50 / 1/3-2/3 划分
 
 ### 2.2 统一显示模式 (Unified Display)
 
-- 条件：`V.UnifiedDisplayMaximize = true` 且 **≥ 2 块显示器**
+- 条件：`V.UnifiedDisplayMaximize = true` 且 **≥ 2 块显示器**，或 `V.UnifiedDisplayMaximize = "auto"`、**≥ 2 块显示器** 且 macOS 关闭了 **Displays have separate Spaces**
 - 使用：`getUnifiedFrame()` 计算统一区域
 
 #### getUnifiedFrame() 返回

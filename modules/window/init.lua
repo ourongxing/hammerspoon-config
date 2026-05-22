@@ -37,6 +37,28 @@ local function getHorizontalScreen()
 	return hs.screen.mainScreen()
 end
 
+local function shouldUseUnifiedDisplay()
+	local mode = V.UnifiedDisplayMaximize
+	if mode == "auto" then
+		local screens = hs.screen.allScreens() or {}
+		if #screens < 2 then
+			return false
+		end
+		if hs.spaces and hs.spaces.screensHaveSeparateSpaces then
+			return not hs.spaces.screensHaveSeparateSpaces()
+		end
+		return true
+	end
+	if not mode then
+		return false
+	end
+	local screens = hs.screen.allScreens() or {}
+	if #screens < 2 then
+		return false
+	end
+	return true
+end
+
 -- 获取统一显示区域 frame（关闭「显示器具有单独空间」时，两块屏视为一块虚拟桌面）
 -- 主屏始终是横屏；x、w：水平总跨度；y、h：取横屏的 y、h
 -- 两块 16:9 屏（一竖一横）并排 → 最大可用区域 25:9
@@ -107,12 +129,12 @@ end
 -- superposition 就是叠加之前的状态，比如之前是上半屏，再按右半屏就是右上四分之一，就是叠加。
 function W.transfrom(win, type, superposition)
 	local gap = V.Gap or 6
-	local useUnified = V.UnifiedDisplayMaximize and #(hs.screen.allScreens() or {}) >= 2
+	local useUnified = shouldUseUnifiedDisplay()
 	local screen, split
 	if useUnified then
 		screen, split = getUnifiedFrame()
 	else
-		screen = hs.screen.mainScreen():frame()
+		screen = win:screen():frame()
 		split = nil
 	end
 	local app = win:application()
@@ -293,9 +315,14 @@ function W.autoLayout(shift)
 		}
 
 	local screens = hs.screen.allScreens()
-	local windows = (V.UnifiedDisplayMaximize and screens and #screens >= 2)
+	local useUnified = shouldUseUnifiedDisplay()
+	local current = U.currentWindow()
+	if not current then
+		return
+	end
+	local windows = useUnified
 		and U.currentSpaceWindows(screens)
-		or U.currentSpaceWindows()
+		or U.currentSpaceWindows(current:screen())
 	if #windows ~= 0 then
 		-- 如果窗口不一样，就重新开始循环，包括焦点变了
 		if not nextLayout or nextLayout[1] ~= windows[1] then
