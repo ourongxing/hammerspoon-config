@@ -66,11 +66,12 @@ modules/window/undoManager.lua (撤销/重做)
 
 | 变量 | 单屏 | 统一模式 |
 |------|------|----------|
-| 左半原始区域 | `leftRaw` | 左屏完整区域；最终 frame 再套 gap |
-| 右半原始区域 | `rightRaw` | 右屏完整区域；最终 frame 再套 gap |
-| 上半原始区域 | `topRaw` | 统一高度的一半；最终 frame 再套 gap |
-| 下半原始区域 | `bottomRaw` | 剩余高度；最终 frame 再套 gap |
-| 竖屏上下半 | `verticalPair()` | 竖屏完整高度按 50-50 切分，再套 gap |
+| 左半宽 | `halfWLeft` | 左屏宽 - gap/2 |
+| 右半宽 | `halfWRight` | 右屏宽 - gap/2 |
+| 分界线 | `halfX` | splitX + gap/2 |
+| 上半高 | `halfH` | 统一高度的一半 |
+| 竖屏上半 | `leftVerticalHalfH` | 左侧为竖屏时，其 h 的一半 |
+| 竖屏下半 | `leftVerticalBottomH` | 剩余高度（右侧同理） |
 
 ### 3.2 Preset 列表
 
@@ -102,9 +103,8 @@ modules/window/undoManager.lua (撤销/重做)
 ## 四、Gap 规则
 
 - `V.Gap = 6`（默认）
-- 两个窗口之间留 gap：相邻两边分别缩进 `gap/2` 与剩余部分
-- 窗口与屏幕四周留 gap
-- 有状态栏的那一侧不额外留外缘 gap（`hs.screen:frame()` 已经避开状态栏）
+- 两个窗口之间留 gap：`leftW - gap/2` 与 `rightW - gap/2` 之间留 6px
+- 窗口与屏幕边缘不留 gap
 
 ---
 

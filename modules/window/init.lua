@@ -37,38 +37,6 @@ local function getHorizontalScreen()
 	return hs.screen.mainScreen()
 end
 
-local function overlapsX(a, b)
-	return a.x < b.x + b.w and a.x + a.w > b.x
-end
-
-local function hasStatusBarOnTop(frame)
-	local screens = hs.screen.allScreens()
-	if not screens then
-		return false
-	end
-	for _, s in ipairs(screens) do
-		local usable = s:frame()
-		local full = s:fullFrame()
-		if overlapsX(frame, usable) and math.abs(frame.y - usable.y) < 1 and usable.y > full.y then
-			return true
-		end
-	end
-	return false
-end
-
-local function insetFrame(frame, insets)
-	local left = insets.left or 0
-	local right = insets.right or 0
-	local top = insets.top or 0
-	local bottom = insets.bottom or 0
-	return {
-		x = frame.x + left,
-		y = frame.y + top,
-		w = math.max(1, frame.w - left - right),
-		h = math.max(1, frame.h - top - bottom),
-	}
-end
-
 -- 获取统一显示区域 frame（关闭「显示器具有单独空间」时，两块屏视为一块虚拟桌面）
 -- 主屏始终是横屏；x、w：水平总跨度；y、h：取横屏的 y、h
 -- 两块 16:9 屏（一竖一横）并排 → 最大可用区域 25:9
@@ -99,20 +67,21 @@ local function getUnifiedFrame()
 	end
 	rightFrame = rightFrame or horizontalFrame
 	local verticalAbove, verticalBelow
+	local gap = V.Gap or 6
 	for _, f in ipairs({ leftFrame, rightFrame }) do
 		if f and f.h > f.w then
-			-- 竖屏超出横屏的部分：上、下两块；gap 在 preset 层统一应用
+			-- 竖屏超出横屏的部分：上、下两块，与横屏之间留 gap
 			local hTop = horizontalFrame.y - f.y
 			local hBottom = (f.y + f.h) - (horizontalFrame.y + horizontalFrame.h)
-			if hTop > 0 then
-				verticalAbove = { x = f.x, y = f.y, w = f.w, h = hTop }
+			if hTop > gap then
+				verticalAbove = { x = f.x, y = f.y, w = f.w, h = hTop - gap // 2 }
 			end
-			if hBottom > 0 then
+			if hBottom > gap then
 				verticalBelow = {
 					x = f.x,
-					y = horizontalFrame.y + horizontalFrame.h,
+					y = horizontalFrame.y + horizontalFrame.h + gap // 2,
 					w = f.w,
-					h = hBottom,
+					h = hBottom - (gap - gap // 2),
 				}
 			end
 			break
@@ -168,71 +137,60 @@ function W.transfrom(win, type, superposition)
 	end
 
 	-- 原点是左上角
-	-- 窗口之间以及屏幕外缘保留 gap；有状态栏的那一侧不额外留外缘 gap
+	-- 只保留两个窗口之间的 gap，窗口与屏幕边缘不留 gap
 
 	local fullW = screen.w
 	local fullH = screen.h
-	local innerGapA = gap // 2
-	local innerGapB = gap - innerGapA
-
-	local function gapped(frame, edges)
-		local function edgeGap(edge, value)
-			if value == true then
-				if edge == "top" and hasStatusBarOnTop(frame) then
-					return 0
-				end
-				return gap
-			end
-			return value or 0
-		end
-		return insetFrame(frame, {
-			left = edgeGap("left", edges.left),
-			right = edgeGap("right", edges.right),
-			top = edgeGap("top", edges.top),
-			bottom = edgeGap("bottom", edges.bottom),
-		})
-	end
 
 	-- 有 split 时按两块屏幕比例划分，否则 50-50
-	local leftRaw, rightRaw
+	local halfWLeft, halfWRight, halfX
+	local leftVerticalHalfH, leftVerticalHalfY, leftVerticalBottomH
+	local rightVerticalHalfH, rightVerticalHalfY, rightVerticalBottomH
 	if split then
-		leftRaw = { x = screen.x, y = split.leftScreen.y, w = split.leftW, h = split.leftScreen.h }
-		rightRaw = { x = split.splitX, y = split.rightScreen.y, w = split.rightW, h = split.rightScreen.h }
+		halfWLeft = split.leftW - gap // 2
+		halfWRight = split.rightW - (gap - gap // 2)
+		halfX = split.splitX + gap // 2
+		-- 竖屏（h > w）可上下分半
+		if split.leftScreen and split.leftScreen.h > split.leftScreen.w then
+			leftVerticalHalfH = (split.leftScreen.h - gap) // 2
+			leftVerticalHalfY = split.leftScreen.y + leftVerticalHalfH + gap
+			leftVerticalBottomH = split.leftScreen.h - leftVerticalHalfH - gap
+		end
+		if split.rightScreen and split.rightScreen.h > split.rightScreen.w then
+			rightVerticalHalfH = (split.rightScreen.h - gap) // 2
+			rightVerticalHalfY = split.rightScreen.y + rightVerticalHalfH + gap
+			rightVerticalBottomH = split.rightScreen.h - rightVerticalHalfH - gap
+		end
 	else
-		local leftW = screen.w // 2
-		leftRaw = { x = screen.x, y = screen.y, w = leftW, h = fullH }
-		rightRaw = { x = screen.x + leftW, y = screen.y, w = screen.w - leftW, h = fullH }
+		halfWLeft = (screen.w - gap) // 2
+		halfWRight = halfWLeft
+		halfX = screen.x + halfWLeft + gap
 	end
 
 	-- y 是有值的，x 没值（如果多屏幕，x 可能为负数），应该是计算了状态栏，而 screen.h 不包括状态栏，当然也不包括 dock 栏
-	local topH = screen.h // 2
-	local topRaw = { x = screen.x, y = screen.y, w = fullW, h = topH }
-	local bottomRaw = { x = screen.x, y = screen.y + topH, w = fullW, h = screen.h - topH }
+	-- halfH + gap + halfH = screen.h
+	local halfH = (screen.h - gap) // 2
+	local halfY = screen.y + halfH + gap
 
-	local function verticalPair(frame)
-		local h = frame.h // 2
-		return { x = frame.x, y = frame.y, w = frame.w, h = h },
-			{ x = frame.x, y = frame.y + h, w = frame.w, h = frame.h - h }
-	end
-	local leftTopRaw, leftBottomRaw = verticalPair(leftRaw)
-	local rightTopRaw, rightBottomRaw = verticalPair(rightRaw)
-
+	-- 竖屏用完整高度，横屏用 unified 区域高度
+	local function verticalH(frame) return frame and frame.h > frame.w and frame.h or fullH end
+	local function verticalY(frame) return frame and frame.h > frame.w and frame.y or screen.y end
+	local leftH = split and verticalH(split.leftScreen) or fullH
+	local leftY = split and verticalY(split.leftScreen) or screen.y
+	local rightH = split and verticalH(split.rightScreen) or fullH
+	local rightY = split and verticalY(split.rightScreen) or screen.y
 	local presets = {
-		full = gapped({ x = screen.x, y = screen.y, w = fullW, h = fullH }, { left = true, right = true, top = true, bottom = true }),
-		left = gapped(leftRaw, { left = true, right = innerGapA, top = true, bottom = true }),
-		right = gapped(rightRaw, { left = innerGapB, right = true, top = true, bottom = true }),
-		top = gapped(topRaw, { left = true, right = true, top = true, bottom = innerGapA }),
-		bottom = gapped(bottomRaw, { left = true, right = true, top = innerGapB, bottom = true }),
-		["vertical-above"] = split and split.verticalAbove
-				and gapped(split.verticalAbove, { left = true, right = true, top = true, bottom = innerGapA })
-			or gapped(topRaw, { left = true, right = true, top = true, bottom = innerGapA }),
-		["vertical-below"] = split and split.verticalBelow
-				and gapped(split.verticalBelow, { left = true, right = true, top = innerGapB, bottom = true })
-			or gapped(bottomRaw, { left = true, right = true, top = innerGapB, bottom = true }),
-		["left-top"] = gapped(leftTopRaw, { left = true, right = innerGapA, top = true, bottom = innerGapA }),
-		["left-bottom"] = gapped(leftBottomRaw, { left = true, right = innerGapA, top = innerGapB, bottom = true }),
-		["right-top"] = gapped(rightTopRaw, { left = innerGapB, right = true, top = true, bottom = innerGapA }),
-		["right-bottom"] = gapped(rightBottomRaw, { left = innerGapB, right = true, top = innerGapB, bottom = true }),
+		full = { x = screen.x, y = screen.y, w = fullW, h = fullH },
+		left = { x = screen.x, y = leftY, w = halfWLeft, h = leftH },
+		right = { x = halfX, y = rightY, w = halfWRight, h = rightH },
+		top = { x = screen.x, y = screen.y, w = fullW, h = halfH },
+		bottom = { x = screen.x, y = halfY, w = fullW, h = halfH },
+		["vertical-above"] = split and split.verticalAbove or { x = screen.x, y = screen.y, w = fullW, h = halfH },
+		["vertical-below"] = split and split.verticalBelow or { x = screen.x, y = halfY, w = fullW, h = halfH },
+		["left-top"] = { x = screen.x, y = leftY, w = halfWLeft, h = leftVerticalHalfH or halfH },
+		["left-bottom"] = { x = screen.x, y = leftVerticalHalfY or halfY, w = halfWLeft, h = leftVerticalBottomH or halfH },
+		["right-top"] = { x = halfX, y = rightY, w = halfWRight, h = rightVerticalHalfH or halfH },
+		["right-bottom"] = { x = halfX, y = rightVerticalHalfY or halfY, w = halfWRight, h = rightVerticalBottomH or halfH },
 		reasonable = {
 			x = win:screen():frame().x + win:screen():frame().w * 0.2,
 			y = win:screen():frame().y + win:screen():frame().h * 0.1,
