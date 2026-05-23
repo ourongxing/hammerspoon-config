@@ -9,7 +9,7 @@ local W = require("modules.window")
 -- 一些基本的窗口管理，比如全屏，左右分屏，上下分屏，居中，然后四分之一屏，循环
 local h = {
   -- window
-  { { "alt" },          "f",      function() W.baseTransform("full") end },
+  { { "alt" },          "f",      function() W.screenFull() end },
   { { "alt" },          "l",      function() W.baseTransform("right") end },
   { { "alt" },          "h",      function() W.baseTransform("left") end },
   { { "alt" },          "j",      function() W.baseTransform("bottom") end },
@@ -29,7 +29,7 @@ local h = {
   { { 'alt', "shift" }, 'b',      function() W.moveToPrimaryScreen() end },
   { { "alt", "shift" }, "q",      function() W.quitAppSafely() end },
   { { "alt", "shift" }, "w",      function() W.closeWindownSafely() end },
-  { { "alt", "shift" }, "f",      function() W.toggleFullScreen() end },
+  { { "alt", "shift" }, "f",      function() W.baseTransform("full") end },
   { { "alt" },          "z",      function() W.undo() end },
   { { "alt", "shift" }, "z",      function() W.redo() end },
   { { "alt", "shift" }, "r",      function() W.restartApp() end },

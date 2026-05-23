@@ -1,159 +1,183 @@
-# 窗口管理逻辑梳理
+# Window Manager
 
-## 一、整体架构
+这套窗口管理有两套完全隔离的布局规则：
 
+- `Single Display`：普通显示器内窗口管理。
+- `Unified Display`：把一块竖屏和一块横屏看作一个统一桌面。
+
+## 模式判定
+
+### Unified Display
+
+只有下面两种情况会进入 `Unified Display`：
+
+1. `V.UnifiedDisplayMaximize = true`，且显示器数量 `>= 2`
+2. `V.UnifiedDisplayMaximize = "auto"`，显示器数量 `>= 2`，且 macOS 关闭了 `Displays have separate Spaces`
+
+并且，当前 unified 规则只适配 **一块竖屏 + 一块横屏** 的排列。
+
+如果不是一横一竖，即使满足上面的开关条件，也会回退到 `Single Display` 规则。
+
+### Single Display
+
+除了上面的 unified 情况之外，全部使用 `Single Display`：
+
+- `V.UnifiedDisplayMaximize = false`
+- 只有一块显示器
+- `V.UnifiedDisplayMaximize = "auto"`，但 macOS 开启了 `Displays have separate Spaces`
+- 显示器不是一横一竖的组合
+
+## 文件结构
+
+```text
+modules/window/init.lua
+  -> transform/single.lua   # Single Display
+  -> transform/unified.lua  # Unified Display，一横一竖专用
+  -> transform/common.lua   # 通用 setFrame / undo / Raycast 特判
+  -> undoManager.lua
 ```
-hotkey.lua (快捷键绑定)
-    ↓
-modules/window/init.lua (核心逻辑)
-    ├── transfrom()      - 窗口尺寸/位置变换
-    ├── baseTransform() - 带叠加的变换入口
-    ├── autoLayout()    - 双窗口自动排列
-    └── 其他功能 (screen/space/undo 等)
-    ↓
-utils/window.lua (工具函数)
-modules/window/undoManager.lua (撤销/重做)
+
+`init.lua` 只负责判断模式并分发：
+
+```lua
+if shouldUseUnifiedDisplay() then
+  UnifiedTransform.transform(win, type, superposition)
+else
+  SingleTransform.transform(win, type, superposition)
+end
 ```
 
----
+`UnifiedTransform` 内部如果发现当前不是一横一竖，也会回退到 `SingleTransform`。
 
-## 二、屏幕模式
+## Unified Display 布局
 
-### 2.1 当前显示器模式
+Unified Display 假设桌面是一块竖屏加一块横屏。它不是完整矩形，而是下面这种复合区域：
 
-- 条件：`V.UnifiedDisplayMaximize = false`、**只有 1 块显示器**，或 `V.UnifiedDisplayMaximize = "auto"` 且 macOS 开启了 **Displays have separate Spaces**
-- 使用：当前窗口所在的 `win:screen():frame()` 作为当前屏幕
-- 所有 preset 基于当前窗口所在屏幕的 50-50 / 1/3-2/3 划分
+```text
+┌────────────┐
+│     A      │
+├────────────┼────────────┬────────────┐
+│     B      │     CL     │     CR     │
+├────────────┴────────────┴────────────┘
+│     D      │
+└────────────┘
+```
 
-### 2.2 统一显示模式 (Unified Display)
+基础区域：
 
-- 条件：`V.UnifiedDisplayMaximize = true` 且 **≥ 2 块显示器**，或 `V.UnifiedDisplayMaximize = "auto"`、**≥ 2 块显示器** 且 macOS 关闭了 **Displays have separate Spaces**
-- 使用：`getUnifiedFrame()` 计算统一区域
-
-#### getUnifiedFrame() 返回
-
-| 字段 | 含义 |
+| 区域 | 含义 |
 |------|------|
-| **screen** | 统一 frame：x=最左, y=横屏 y, w=总跨度, h=横屏 h |
-| **split.leftScreen** | 左侧块完整 frame |
-| **split.rightScreen** | 右侧块完整 frame |
-| **split.splitX** | 左右分界线 x 坐标 |
-| **split.leftW / rightW** | 左右块宽度 |
+| `A` | 竖屏高出横屏的上方区域 |
+| `B` | 竖屏和横屏共享高度内的竖屏区域 |
+| `D` | 竖屏高出横屏的下方区域 |
+| `CL` | 横屏左半 |
+| `CR` | 横屏右半 |
 
-**主屏始终是横屏**（w > h）。y、h 取横屏作为参考。竖屏（h > w）可充分利用上下高度。
+组合区域：
 
-两块 16:9 屏（一竖一横）并排时，最大可用区域宽高比 = **25:9**（竖 9 + 横 16 = 宽 25，高取 min = 9）。
+| 区域 | 含义 |
+|------|------|
+| `C` | 完整横屏，`CL + CR` |
+| `BC` | unified 主区域，`B + CL + CR` |
+| `AB` | 竖屏上方 + 中段 |
+| `BD` | 竖屏中段 + 下方 |
+| `ABD` | 完整竖屏 |
+| `VT` | 完整竖屏上半 |
+| `VB` | 完整竖屏下半 |
 
-#### 布局示意（竖屏 1080×1920 左，横屏 1920×1050 右）
+## Unified Display 循环
 
+### 横向循环
+
+`Alt+L` 向右：
+
+```text
+B -> CL -> CR -> C -> BC -> B
 ```
-        竖屏                    横屏 (主屏)
-    ┌─────────────┐        ┌─────────────────────┐
-    │  y=-425     │        │  y=30               │
-    │  1080×1920  │        │  1920×1050          │
-    │             │   x=0  │                     │
-    │             │        │                     │
-    │             │        │                     │
-    └─────────────┘        └─────────────────────┘
-    x=-1080
+
+`Alt+H` 向左：
+
+```text
+B <- CL <- CR <- C <- BC <- B
 ```
 
----
+其中：
 
-## 三、Preset 预设
+- `C = CL + CR`
+- `BC = B + CL + CR`
 
-### 3.1 基准变量
+### 竖向循环
 
-| 变量 | 单屏 | 统一模式 |
-|------|------|----------|
-| 左半宽 | `halfWLeft` | 左屏宽 - gap/2 |
-| 右半宽 | `halfWRight` | 右屏宽 - gap/2 |
-| 分界线 | `halfX` | splitX + gap/2 |
-| 上半高 | `halfH` | 统一高度的一半 |
-| 竖屏上半 | `leftVerticalHalfH` | 左侧为竖屏时，其 h 的一半 |
-| 竖屏下半 | `leftVerticalBottomH` | 剩余高度（右侧同理） |
+`Alt+J` 向下：
 
-### 3.2 Preset 列表
+```text
+A -> B -> D -> AB -> BD -> VT -> VB -> ABD -> A
+```
 
-| 类型 | 区域 | 行为 |
-|------|------|------|
-| **full** | 全屏 | 统一区域：宽=总跨度，高=横屏高 |
-| **left** | 左半 | 左侧块：竖屏时高=**1920**，横屏时用统一高 |
-| **right** | 右半 | 右侧块：竖屏时用其完整高，横屏时用统一高 |
-| **top** | 上半 | 横跨两屏，高=统一区域高的一半 |
-| **bottom** | 下半 | 同上 |
-| **vertical-above** | 竖屏上 | 竖屏超出横屏上方的区域（Alt+Shift+K） |
-| **vertical-below** | 竖屏下 | 竖屏超出横屏下方的区域（Alt+Shift+J） |
-| **left-top** | 左上 1/4 | 左侧为竖屏时用其上半，否则用统一区域上半 |
-| **left-bottom** | 左下 1/4 | 左侧为竖屏时用其下半 |
-| **right-top** | 右上 1/4 | 右侧为竖屏时用其上半，否则用统一区域上半 |
-| **right-bottom** | 右下 1/4 | 右侧为竖屏时用其下半 |
-| **reasonable** | 居中 | 80% 宽、60% 高，居中 |
-| **center** | 居中 | 保持原尺寸，居中 |
+`Alt+K` 向上，反向循环。
 
-### 3.3 叠加规则 (superposition)
+竖屏同时支持：
 
-当 `baseTransform(type, true)` 时，会根据当前窗口状态切换到下一个 preset：
+- 三段：`A / B / D`
+- 两段：`VT / VB`
+- 组合：`AB / BD / ABD`
 
-- **左/右**：top → left-top，bottom → left-bottom，right-top → left-top，right-bottom → left-bottom，left ↔ right
-- **上/下**：left → left-top，right → right-top，left-bottom → left-top，right-bottom → right-top，top ↔ bottom
+### 竖屏快捷直达
 
----
+```text
+Alt+Shift+K -> A
+Alt+Shift+J -> D
+```
 
-## 四、Gap 规则
+## Single Display 布局
 
-- `V.Gap = 6`（默认）
-- 两个窗口之间留 gap：`leftW - gap/2` 与 `rightW - gap/2` 之间留 6px
-- 窗口与屏幕边缘不留 gap
+Single Display 只看当前窗口所在的物理显示器。
 
----
+```text
+┌────────────┬────────────┐
+│ left-top   │ right-top  │
+├────────────┼────────────┤
+│ left-bottom│ right-bottom
+└────────────┴────────────┘
+```
 
-## 五、快捷键
+规则：
 
-| 快捷键 | 功能 |
+- `Alt+F`：当前物理显示器 full
+- `Alt+H/L`：左右半屏；在四角状态下保留上下位置横向切换
+- `Alt+K/J`：上下半屏；在四角状态下保留左右位置纵向切换
+- `Alt+Shift+K/J`：等同上半屏 / 下半屏
+
+## 快捷键
+
+| 快捷键 | 说明 |
 |--------|------|
-| Alt+F | 全屏 |
-| Alt+H | 左半 | Alt+L | 右半 |
-| Alt+K | 上半 | Alt+J | 下半 |
-| Alt+Shift+K | 竖屏上 | Alt+Shift+J | 竖屏下 |
-| Alt+C | 居中 | Alt+Shift+C | reasonable |
-| Alt+M | 自动布局 | Alt+Shift+M | 自动布局（反向） |
-| Alt+Shift+←/→ | 切换 Space |
-| Alt+` | 焦点切到下一屏 | Alt+Shift+` | 移动窗口到下一屏 |
-| Cmd+` | 同屏切换窗口 |
-| Alt+B | 焦点到主屏（横屏） | Alt+Shift+B | 移动窗口到主屏（横屏） |
-| Alt+Shift+Q | 安全关闭应用 | Alt+Shift+W | 安全关闭窗口 |
-| Alt+Shift+F | 切换全屏 |
-| Alt+Z | 撤销 | Alt+Shift+Z | 重做 |
+| `Alt+F` | 当前物理显示器 full |
+| `Alt+Shift+F` | unified 下为 `BC`；single 下为当前屏 full |
+| `Alt+H` | 向左 |
+| `Alt+L` | 向右 |
+| `Alt+K` | 向上 |
+| `Alt+J` | 向下 |
+| `Alt+Shift+K` | unified 下直达 `A` |
+| `Alt+Shift+J` | unified 下直达 `D` |
+| `Alt+C` | 保持当前尺寸居中 |
+| `Alt+Shift+C` | reasonable，当前屏 60% 宽、80% 高 |
+| `Alt+M` | 自动排列前两个窗口 |
+| `Alt+Shift+M` | 自动排列前两个窗口，反向优先 |
+| `Cmd+\`` | 当前屏内切换窗口 |
+| `Alt+\`` | 焦点切到下一块有窗口的屏幕 |
+| `Alt+Shift+\`` | 移动窗口到下一块屏幕 |
+| `Alt+B` | 焦点到主屏，也就是横屏 |
+| `Alt+Shift+B` | 移动窗口到主屏，也就是横屏 |
+| `Alt+Shift+Left/Right` | 切换 Space |
+| `Alt+Z` | undo |
+| `Alt+Shift+Z` | redo |
 
----
+## 其他行为
 
-## 六、跨屏鼠标位置
-
-- 切换显示器焦点时，会按显示器 ID 记录每块屏幕上一次的鼠标位置
-- 再次切回该显示器时，优先恢复上次位置；没有记录时回退到目标窗口中心或屏幕中心
-- 记录保存在 `hs.settings` 中，Hammerspoon reload 后仍可恢复
-
----
-
-## 七、自动布局 (autoLayout)
-
-- 目标：当前 Space 的前两个窗口
-- 布局循环（`V.LeftTopFirst = true`）：`left + right` → `top + bottom`
-- 焦点窗口始终在左/上位置
-
----
-
-## 八、撤销系统 (undoManager)
-
-- 记录：frame、screen、space、全屏状态、鼠标位置、focusWin
-- 上限：`V.MaxUndoHistory = 20`
-- 每次变换后自动入栈，支持 undo/redo
-
----
-
-## 九、特殊处理
-
-1. **Raycast 空标题窗口**：用方向键而非 setFrame 控制
-2. **AXEnhancedUserInterface**：变换前关闭，避免动画异常
-3. **动画**：仅位置或仅尺寸变化时使用 0.2s 动画
+- `autoLayout()` 只处理当前 Space 的前两个窗口。
+- Unified Display 下，窗口集合来自当前 Space 的所有显示器。
+- 鼠标跨屏切换时会按显示器 ID 记录上次位置。
+- undo 会记录窗口 frame、screen、space、fullscreen、鼠标位置和焦点窗口。
+- Raycast 空标题窗口不直接 `setFrame`，而是发送方向键。
+- 变换前会关闭 `AXEnhancedUserInterface`，减少窗口动画问题。
