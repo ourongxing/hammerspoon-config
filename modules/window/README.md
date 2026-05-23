@@ -1,6 +1,6 @@
 # Window Manager
 
-这套窗口管理有两套完全隔离的布局规则：
+这套窗口管理有两套布局规则，并且可以在多屏环境下混合使用：
 
 - `Single Display`：普通显示器内窗口管理。
 - `Unified Display`：把一块竖屏和一块横屏看作一个统一桌面。
@@ -16,7 +16,25 @@
 
 并且，当前 unified 规则只适配 **一块竖屏 + 一块横屏** 的排列。
 
-如果不是一横一竖，即使满足上面的开关条件，也会回退到 `Single Display` 规则。
+如果参与 unified 的屏幕不是刚好一横一竖，即使满足上面的开关条件，也会回退到 `Single Display` 规则。
+
+### 隔离名单
+
+多于两块屏幕时，可以把额外屏幕放进隔离名单：
+
+```lua
+V.UnifiedDisplayIsolatedScreens = {
+  "Sidecar Display (AirPlay)",
+  -- 也可以填 screen id，比如 25
+}
+```
+
+名单规则：
+
+- 名单里的屏幕不参与 `Unified Display`，始终使用 `Single Display`。
+- 名单外剩下的屏幕如果刚好是一横一竖，就组成 `Unified Display`。
+- 当前窗口在名单内屏幕上时，`Alt+H/L/K/J` 都只整理这块屏幕。
+- 当前窗口在 unified 参与屏上时，`Alt+H/L/K/J` 在统一桌面内工作。
 
 ### Single Display
 
@@ -25,7 +43,8 @@
 - `V.UnifiedDisplayMaximize = false`
 - 只有一块显示器
 - `V.UnifiedDisplayMaximize = "auto"`，但 macOS 开启了 `Displays have separate Spaces`
-- 显示器不是一横一竖的组合
+- 名单外参与 unified 的显示器不是刚好一横一竖
+- 当前窗口位于 `V.UnifiedDisplayIsolatedScreens` 名单中的屏幕
 
 ## 文件结构
 
@@ -40,14 +59,14 @@ modules/window/init.lua
 `init.lua` 只负责判断模式并分发：
 
 ```lua
-if shouldUseUnifiedDisplay() then
-  UnifiedTransform.transform(win, type, superposition)
+if shouldUseUnifiedDisplayForScreen(win:screen()) then
+  UnifiedTransform.transform(win, type, superposition, unifiedScreens())
 else
   SingleTransform.transform(win, type, superposition)
 end
 ```
 
-`UnifiedTransform` 内部如果发现当前不是一横一竖，也会回退到 `SingleTransform`。
+`UnifiedTransform` 只接收名单外的 unified 参与屏幕。它内部如果发现当前不是一横一竖，也会回退到 `SingleTransform`。
 
 ## Unified Display 布局
 
@@ -176,7 +195,9 @@ Single Display 只看当前窗口所在的物理显示器。
 ## 其他行为
 
 - `autoLayout()` 只处理当前 Space 的前两个窗口。
-- Unified Display 下，窗口集合来自当前 Space 的所有显示器。
+- 当前窗口在 unified 参与屏上时，窗口集合来自 unified 参与屏。
+- 当前窗口在隔离屏上时，窗口集合只来自当前屏。
+- `Cmd+\`` 在 unified 参与屏上跨 unified 参与屏切窗口，在隔离屏上只切当前屏。
 - 鼠标跨屏切换时会按显示器 ID 记录上次位置。
 - undo 会记录窗口 frame、screen、space、fullscreen、鼠标位置和焦点窗口。
 - Raycast 空标题窗口不直接 `setFrame`，而是发送方向键。

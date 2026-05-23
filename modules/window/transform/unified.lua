@@ -2,8 +2,8 @@ local C = require("modules.window.transform.common")
 local Single = require("modules.window.transform.single")
 local UTransform = {}
 
-local function getHorizontalScreenFrame()
-	local screens = hs.screen.allScreens()
+local function getHorizontalScreenFrame(screens)
+	screens = screens or hs.screen.allScreens()
 	if not screens or #screens == 0 then
 		return hs.screen.mainScreen():frame()
 	end
@@ -16,12 +16,12 @@ local function getHorizontalScreenFrame()
 	return hs.screen.mainScreen():frame()
 end
 
-local function getUnifiedFrame()
-	local screens = hs.screen.allScreens()
+local function getUnifiedFrame(screens)
+	screens = screens or hs.screen.allScreens()
 	if not screens or #screens < 2 then
 		return hs.screen.mainScreen():frame(), nil
 	end
-	local horizontalFrame = getHorizontalScreenFrame()
+	local horizontalFrame = getHorizontalScreenFrame(screens)
 	local minX, maxRight = math.huge, -math.huge
 	local leftFrame, rightFrame
 	for _, s in ipairs(screens) do
@@ -129,8 +129,8 @@ local function compactRegionList(regions, names)
 	return result
 end
 
-function UTransform.transform(win, type, superposition)
-	local screen, split = getUnifiedFrame()
+function UTransform.transform(win, type, superposition, screens)
+	local screen, split = getUnifiedFrame(screens)
 	if not split then
 		return Single.transform(win, type, superposition)
 	end
@@ -185,36 +185,36 @@ function UTransform.transform(win, type, superposition)
 			elseif inVerticalColumn then
 				preset = regions[type == "top" and "A" or "D"] or regions.B
 			end
-			elseif type == "left" then
-				local index = nil
-				for i, name in ipairs(horizontalCycle) do
-					if current == name then
-						index = i
-						break
-					end
-				end
-				if index then
-					local nextIndex = (index - 2) % #horizontalCycle + 1
-					preset = regions[horizontalCycle[nextIndex]]
-				elseif inVerticalColumn then
-					preset = regions.BC
-				end
-			elseif type == "right" then
-				local index = nil
-				for i, name in ipairs(horizontalCycle) do
-					if current == name then
-						index = i
-						break
-					end
-				end
-				if index then
-					local nextIndex = index % #horizontalCycle + 1
-					preset = regions[horizontalCycle[nextIndex]]
-				elseif inVerticalColumn then
-					preset = regions.B
+		elseif type == "left" then
+			local index = nil
+			for i, name in ipairs(horizontalCycle) do
+				if current == name then
+					index = i
+					break
 				end
 			end
+			if index then
+				local nextIndex = (index - 2) % #horizontalCycle + 1
+				preset = regions[horizontalCycle[nextIndex]]
+			elseif inVerticalColumn then
+				preset = regions.BC
+			end
+		elseif type == "right" then
+			local index = nil
+			for i, name in ipairs(horizontalCycle) do
+				if current == name then
+					index = i
+					break
+				end
+			end
+			if index then
+				local nextIndex = index % #horizontalCycle + 1
+				preset = regions[horizontalCycle[nextIndex]]
+			elseif inVerticalColumn then
+				preset = regions.B
+			end
 		end
+	end
 
 	C.applyWindowFrame(win, origin, preset)
 end

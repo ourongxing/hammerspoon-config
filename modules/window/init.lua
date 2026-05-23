@@ -31,8 +31,8 @@ end
 
 local function shouldUseUnifiedDisplay()
 	local mode = V.UnifiedDisplayMaximize
+	local screens = hs.screen.allScreens() or {}
 	if mode == "auto" then
-		local screens = hs.screen.allScreens() or {}
 		if #screens < 2 then
 			return false
 		end
@@ -44,11 +44,70 @@ local function shouldUseUnifiedDisplay()
 	if not mode then
 		return false
 	end
-	local screens = hs.screen.allScreens() or {}
 	if #screens < 2 then
 		return false
 	end
 	return true
+end
+
+local function screenMatchesListItem(screen, item)
+	if not (screen and item) then
+		return false
+	end
+	if type(item) == "number" then
+		return screen:id() == item
+	end
+	if type(item) == "string" then
+		return screen:name() == item or tostring(screen:id()) == item
+	end
+	return false
+end
+
+local function isUnifiedIsolatedScreen(screen)
+	local isolated = V.UnifiedDisplayIsolatedScreens
+	if type(isolated) ~= "table" then
+		return false
+	end
+	for _, item in ipairs(isolated) do
+		if screenMatchesListItem(screen, item) then
+			return true
+		end
+	end
+	return false
+end
+
+local function unifiedScreens()
+	local result = {}
+	for _, screen in ipairs(hs.screen.allScreens() or {}) do
+		if not isUnifiedIsolatedScreen(screen) then
+			result[#result + 1] = screen
+		end
+	end
+	return result
+end
+
+local function screensAreOneHorizontalOneVertical(screens)
+	if not screens or #screens ~= 2 then
+		return false
+	end
+	local horizontal = 0
+	local vertical = 0
+	for _, screen in ipairs(screens) do
+		local frame = screen:frame()
+		if frame.w > frame.h then
+			horizontal = horizontal + 1
+		elseif frame.h > frame.w then
+			vertical = vertical + 1
+		end
+	end
+	return horizontal == 1 and vertical == 1
+end
+
+local function shouldUseUnifiedDisplayForScreen(screen)
+	if not shouldUseUnifiedDisplay() or isUnifiedIsolatedScreen(screen) then
+		return false
+	end
+	return screensAreOneHorizontalOneVertical(unifiedScreens())
 end
 
 local function screenKey(screen)
@@ -97,8 +156,8 @@ local function moveMouseToScreen(screen, fallback)
 end
 
 function W.transfrom(win, type, superposition)
-	if shouldUseUnifiedDisplay() then
-		UnifiedTransform.transform(win, type, superposition)
+	if shouldUseUnifiedDisplayForScreen(win:screen()) then
+		UnifiedTransform.transform(win, type, superposition, unifiedScreens())
 	else
 		SingleTransform.transform(win, type, superposition)
 	end
@@ -174,12 +233,12 @@ function W.autoLayout(shift)
 			{ "bottom", "top" },
 		}
 
-	local screens = hs.screen.allScreens()
-	local useUnified = shouldUseUnifiedDisplay()
 	local current = U.currentWindow()
 	if not current then
 		return
 	end
+	local useUnified = shouldUseUnifiedDisplayForScreen(current:screen())
+	local screens = useUnified and unifiedScreens() or nil
 	local windows = useUnified
 		and U.currentSpaceWindows(screens)
 		or U.currentSpaceWindows(current:screen())
@@ -285,7 +344,9 @@ end
 function W.focusToNextWindow()
 	local current = U.currentWindow()
 	-- 保持一个固定的顺序，默认是按照 focus 的顺序，会一直变化
-	local windows = U.currentSpaceWindows(current:screen(), hs.window.filter.sortByCreated)
+	local windows = shouldUseUnifiedDisplayForScreen(current:screen())
+			and U.currentSpaceWindows(unifiedScreens(), hs.window.filter.sortByCreated)
+		or U.currentSpaceWindows(current:screen(), hs.window.filter.sortByCreated)
 	if #windows > 1 then
 		local index = U.indexOf(windows, current)
 		if index then

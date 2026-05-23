@@ -3,6 +3,10 @@ V.LeftTopFirst = true
 V.Gap = 0
 -- true: 强制统一显示模式；false: 当前显示器模式；"auto": 跟随「显示器具有单独空间」
 V.UnifiedDisplayMaximize = "auto"
+-- 这些屏幕不参与 Unified Display；可填屏幕名或 screen id
+V.UnifiedDisplayIsolatedScreens = {
+  "Sidecar Display (AirPlay)",
+}
 V.MaxUndoHistory = 20
 local W = require("modules.window")
 
