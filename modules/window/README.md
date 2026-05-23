@@ -111,26 +111,27 @@ Unified Display 假设桌面是一块竖屏加一块横屏。它不是完整矩�
 `Alt+L` 向右：
 
 ```text
-B -> CL -> CR -> C -> BC -> B
+B -> CL -> CR -> B
 ```
 
 `Alt+H` 向左：
 
 ```text
-B <- CL <- CR <- C <- BC <- B
+B <- CL <- CR <- B
 ```
 
 其中：
 
 - `C = CL + CR`
 - `BC = B + CL + CR`
+- `C` 和 `BC` 不参与方向循环，只通过 full 类操作手动进入
 
 ### 竖向循环
 
 `Alt+J` 向下：
 
 ```text
-A -> B -> D -> AB -> BD -> VT -> VB -> ABD -> A
+A -> B -> D -> AB -> BD -> VT -> VB -> A
 ```
 
 `Alt+K` 向上，反向循环。
@@ -139,7 +140,8 @@ A -> B -> D -> AB -> BD -> VT -> VB -> ABD -> A
 
 - 三段：`A / B / D`
 - 两段：`VT / VB`
-- 组合：`AB / BD / ABD`
+- 组合：`AB / BD`
+- `ABD` 不参与方向循环，只通过 full 类操作手动进入
 
 ### 竖屏快捷直达
 
