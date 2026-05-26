@@ -146,7 +146,7 @@ function UTransform.transform(win, type, superposition, screens)
 	local current = regionName(origin, regions)
 	local centerX = origin.x + origin.w / 2
 	local inVerticalColumn = centerX >= regions.B.x and centerX <= regions.B.x + regions.B.w
-	local verticalCycle = compactRegionList(regions, { "A", "B", "D", "AB", "BD", "VT", "VB" })
+	local verticalCycle = compactRegionList(regions, { "B", "AB", "BD", "VT", "VB" })
 	local horizontalCycle = compactRegionList(regions, { "B", "CL", "CR" })
 	local preset = ({
 		full = regions.BC,
@@ -183,9 +183,9 @@ function UTransform.transform(win, type, superposition, screens)
 				local nextIndex = type == "top" and (index - 2) % #verticalCycle + 1 or index % #verticalCycle + 1
 				preset = regions[verticalCycle[nextIndex]]
 			elseif current == "ABD" then
-				preset = regions[type == "top" and "VB" or "A"] or regions.B
+				preset = regions[type == "top" and "VT" or "VB"] or regions.B
 			elseif inVerticalColumn then
-				preset = regions[type == "top" and "A" or "D"] or regions.B
+				preset = regions[type == "top" and "VT" or "VB"] or regions.B
 			end
 		elseif type == "left" then
 			local index = nil
@@ -198,8 +198,10 @@ function UTransform.transform(win, type, superposition, screens)
 			if index then
 				local nextIndex = (index - 2) % #horizontalCycle + 1
 				preset = regions[horizontalCycle[nextIndex]]
-			elseif current == "C" or current == "BC" then
-				preset = regions.CR
+			elseif current == "BC" then
+				preset = regions.B
+			elseif current == "C" then
+				preset = regions.CL
 			elseif inVerticalColumn then
 				preset = regions.B
 			end
@@ -214,8 +216,10 @@ function UTransform.transform(win, type, superposition, screens)
 			if index then
 				local nextIndex = index % #horizontalCycle + 1
 				preset = regions[horizontalCycle[nextIndex]]
-			elseif current == "C" or current == "BC" then
-				preset = regions.B
+			elseif current == "BC" then
+				preset = regions.CR
+			elseif current == "C" then
+				preset = regions.CR
 			elseif inVerticalColumn then
 				preset = regions.B
 			end
